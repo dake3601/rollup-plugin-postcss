@@ -7,15 +7,17 @@ export default {
   name: 'less',
   test: /\.less$/,
   async process({ code }) {
-    const less = loadModule('less')
+    const less = await loadModule('less')
     if (!less) {
-      throw new Error('You need to install "less" packages in order to process Less files')
+      throw new Error(
+        'You need to install "less" packages in order to process Less files'
+      )
     }
 
     let { css, map, imports } = await pify(less.render.bind(less))(code, {
       ...this.options,
       sourceMap: this.sourceMap && {},
-      filename: this.id
+      filename: this.id,
     })
 
     for (const dep of imports) {
@@ -24,12 +26,12 @@ export default {
 
     if (map) {
       map = JSON.parse(map)
-      map.sources = map.sources.map(source => humanlizePath(source))
+      map.sources = map.sources.map((source) => humanlizePath(source))
     }
 
     return {
       code: css,
-      map
+      map,
     }
-  }
+  },
 }

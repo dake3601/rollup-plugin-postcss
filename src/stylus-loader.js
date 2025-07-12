@@ -6,15 +6,17 @@ export default {
   name: 'stylus',
   test: /\.(styl|stylus)$/,
   async process({ code }) {
-    const stylus = loadModule('stylus')
+    const stylus = await loadModule('stylus')
     if (!stylus) {
-      throw new Error('You need to install "stylus" packages in order to process Stylus files')
+      throw new Error(
+        'You need to install "stylus" packages in order to process Stylus files'
+      )
     }
 
     const style = stylus(code, {
       ...this.options,
       filename: this.id,
-      sourcemap: this.sourceMap && {}
+      sourcemap: this.sourceMap && {},
     })
 
     const css = await pify(style.render.bind(style))()
@@ -25,7 +27,7 @@ export default {
 
     return {
       code: css,
-      map: style.sourcemap
+      map: style.sourcemap,
     }
-  }
+  },
 }

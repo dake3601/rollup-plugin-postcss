@@ -31,7 +31,7 @@ function getRecursiveImportOrder(id, getModuleInfo, seen = new Set()) {
   seen.add(id)
 
   const result = [id]
-  getModuleInfo(id).importedIds.forEach(importFile => {
+  getModuleInfo(id).importedIds.forEach((importFile) => {
     result.push(...getRecursiveImportOrder(importFile, getModuleInfo, seen))
   })
 
@@ -41,13 +41,16 @@ function getRecursiveImportOrder(id, getModuleInfo, seen = new Set()) {
 /* eslint import/no-anonymous-default-export: [2, {"allowArrowFunction": true}] */
 export default (options = {}) => {
   const filter = createFilter(options.include, options.exclude)
-  const postcssPlugins = Array.isArray(options.plugins) ?
-    options.plugins.filter(Boolean) :
-    options.plugins
+  const postcssPlugins = Array.isArray(options.plugins)
+    ? options.plugins.filter(Boolean)
+    : options.plugins
   const { sourceMap } = options
   const postcssLoaderOptions = {
     /** Inject CSS as `<style>` to `<head>` */
-    inject: typeof options.inject === 'function' ? options.inject : inferOption(options.inject, {}),
+    inject:
+      typeof options.inject === 'function'
+        ? options.inject
+        : inferOption(options.inject, {}),
     /** Extract CSS */
     extract: typeof options.extract === 'undefined' ? false : options.extract,
     /** CSS modules */
@@ -68,8 +71,8 @@ export default (options = {}) => {
       plugins: postcssPlugins,
       syntax: options.syntax,
       stringifier: options.stringifier,
-      exec: options.exec
-    }
+      exec: options.exec,
+    },
   }
   let use = ['sass', 'stylus', 'less']
   if (Array.isArray(options.use)) {
@@ -78,7 +81,7 @@ export default (options = {}) => {
     use = [
       ['sass', options.use.sass || {}],
       ['stylus', options.use.stylus || {}],
-      ['less', options.use.less || {}]
+      ['less', options.use.less || {}],
     ]
   }
 
@@ -87,7 +90,7 @@ export default (options = {}) => {
   const loaders = new Loaders({
     use,
     loaders: options.loaders,
-    extensions: options.extensions
+    extensions: options.extensions,
   })
 
   const extracted = new Map()
@@ -109,13 +112,13 @@ export default (options = {}) => {
         sourceMap,
         dependencies: new Set(),
         warn: this.warn.bind(this),
-        plugin: this
+        plugin: this,
       }
 
       const result = await loaders.process(
         {
           code,
-          map: undefined
+          map: undefined,
         },
         loaderContext
       )
@@ -128,31 +131,31 @@ export default (options = {}) => {
         extracted.set(id, result.extracted)
         return {
           code: result.code,
-          map: { mappings: '' }
+          map: { mappings: '' },
         }
       }
 
       return {
         code: result.code,
-        map: result.map || { mappings: '' }
+        map: result.map || { mappings: '' },
       }
     },
 
     augmentChunkHash() {
       if (extracted.size === 0) return
       // eslint-disable-next-line unicorn/no-reduce
-      const extractedValue = [...extracted].reduce((object, [key, value]) => ({
-        ...object,
-        [key]: value
-      }), {})
+      const extractedValue = [...extracted].reduce(
+        (object, [key, value]) => ({
+          ...object,
+          [key]: value,
+        }),
+        {}
+      )
       return JSON.stringify(extractedValue)
     },
 
     async generateBundle(options_, bundle) {
-      if (
-        extracted.size === 0 ||
-        !(options_.dir || options_.file)
-      ) return
+      if (extracted.size === 0 || !(options_.dir || options_.file)) return
 
       // eslint-disable-next-line no-warning-comments
       // TODO: support `[hash]`
@@ -161,19 +164,20 @@ export default (options = {}) => {
         options_.file ||
         path.join(
           options_.dir,
-          Object.keys(bundle).find(fileName => bundle[fileName].isEntry)
+          Object.keys(bundle).find((fileName) => bundle[fileName].isEntry)
         )
       const getExtracted = () => {
         let fileName = `${path.basename(file, path.extname(file))}.css`
         if (typeof postcssLoaderOptions.extract === 'string') {
-          fileName = path.isAbsolute(postcssLoaderOptions.extract) ? normalizePath(path.relative(dir, postcssLoaderOptions.extract)) : normalizePath(postcssLoaderOptions.extract)
+          fileName = path.isAbsolute(postcssLoaderOptions.extract)
+            ? normalizePath(path.relative(dir, postcssLoaderOptions.extract))
+            : normalizePath(postcssLoaderOptions.extract)
         }
 
         const concat = new Concat(true, fileName, '\n')
         const entries = [...extracted.values()]
-        const { modules, facadeModuleId } = bundle[
-          normalizePath(path.relative(dir, file))
-        ]
+        const { modules, facadeModuleId } =
+          bundle[normalizePath(path.relative(dir, file))]
 
         if (modules) {
           const moduleIds = getRecursiveImportOrder(
@@ -210,7 +214,7 @@ export default (options = {}) => {
           code,
           map: sourceMap === true && concat.sourceMap,
           codeFileName: fileName,
-          mapFileName: fileName + '.map'
+          mapFileName: fileName + '.map',
         }
       }
 
@@ -233,7 +237,9 @@ export default (options = {}) => {
           cssOptions.to = codeFileName
         }
 
-        const result = await require('cssnano')(postcssLoaderOptions.minimize).process(code, cssOptions)
+        const result = (await import('cssnano'))(
+          postcssLoaderOptions.minimize
+        ).process(code, cssOptions)
         code = result.css
 
         if (sourceMap === true && result.map && result.map.toString) {
@@ -244,15 +250,15 @@ export default (options = {}) => {
       this.emitFile({
         fileName: codeFileName,
         type: 'asset',
-        source: code
+        source: code,
       })
       if (map) {
         this.emitFile({
           fileName: mapFileName,
           type: 'asset',
-          source: map
+          source: map,
         })
       }
-    }
+    },
   }
 }

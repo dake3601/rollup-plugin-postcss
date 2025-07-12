@@ -1,5 +1,4 @@
 import path from 'path'
-import series from 'promise.series'
 import postcssLoader from './postcss-loader'
 import sassLoader from './sass-loader'
 import stylusLoader from './stylus-loader'
@@ -53,12 +52,12 @@ export default class Loaders {
   }
 
   removeLoader(name) {
-    this.loaders = this.loaders.filter(loader => loader.name !== name)
+    this.loaders = this.loaders.filter((loader) => loader.name !== name)
     return this
   }
 
   isSupported(filepath) {
-    return this.loaders.some(loader => {
+    return this.loaders.some((loader) => {
       return matchFile(filepath, loader.test)
     })
   }
@@ -74,35 +73,39 @@ export default class Loaders {
    * @param {Set<string>} context.dependencies A set of dependencies to watch
    * @returns {{code: string, map?: any}}
    */
-  process({ code, map }, context) {
-    return series(
-      this.use
-        .slice()
-        .reverse()
-        .map(([name, options]) => {
-          const loader = this.getLoader(name)
-          const loaderContext = {
-            options: options || {},
-            ...context
+  async process({ code, map }, context) {
+    const loaderFunctions = this.use
+      .slice()
+      .reverse()
+      .map(([name, options]) => {
+        const loader = this.getLoader(name)
+        const loaderContext = {
+          options: options || {},
+          ...context,
+        }
+
+        return async (v) => {
+          if (
+            loader.alwaysProcess ||
+            matchFile(loaderContext.id, loader.test)
+          ) {
+            return loader.process.call(loaderContext, v)
           }
 
-          return v => {
-            if (
-              loader.alwaysProcess ||
-              matchFile(loaderContext.id, loader.test)
-            ) {
-              return loader.process.call(loaderContext, v)
-            }
+          // Otherwise directly return input value
+          return v
+        }
+      })
 
-            // Otherwise directly return input value
-            return v
-          }
-        }),
-      { code, map }
-    )
+    let result = { code, map }
+    for (const loaderFn of loaderFunctions) {
+      result = await loaderFn(result)
+    }
+
+    return result
   }
 
   getLoader(name) {
-    return this.loaders.find(loader => loader.name === name)
+    return this.loaders.find((loader) => loader.name === name)
   }
 }

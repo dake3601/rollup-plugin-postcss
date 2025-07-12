@@ -1,9 +1,9 @@
 import importCwd from 'import-cwd'
 
-export function loadModule(moduleId) {
+export async function loadModule(moduleId) {
   // Trying to load module normally (relative to plugin directory)
   try {
-    return require(moduleId)
+    return await import(moduleId)
   } catch {
     // Ignore error
   }

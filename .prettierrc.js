@@ -1,6 +1,6 @@
 'use strict'
 
-module.exports = {
+export default {
   singleQuote: true,
   semi: false,
   printWidth: 80
