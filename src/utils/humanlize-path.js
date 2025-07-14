@@ -1,7 +1,11 @@
-import path from 'path'
-import normalizePath from './normalize-path'
+import path from 'path';
+import normalizePath from './normalize-path.js';
 
-const humanlizePath = filepath => normalizePath(path.relative(process.cwd(),
-  filepath))
-
-export default humanlizePath
+/**
+ * Convert absolute path to relative path from current working directory
+ * @param {string} filepath - Absolute file path
+ * @returns {string} Relative path
+ */
+export default function humanlizePath(filepath) {
+  return normalizePath(path.relative(process.cwd(), filepath));
+}

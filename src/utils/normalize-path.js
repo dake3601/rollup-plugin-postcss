@@ -1,2 +1,8 @@
-/* eslint import/no-anonymous-default-export: [2, {"allowArrowFunction": true}] */
-export default (p) => p && p.replace(/\\+/g, '/')
+/**
+ * Normalize path separators to forward slashes
+ * @param {string} p - Path to normalize
+ * @returns {string} Normalized path
+ */
+export default function normalizePath(p) {
+  return p?.replace(/\\+/g, '/') || '';
+}

@@ -1,37 +1,49 @@
-import pify from 'pify'
-import humanlizePath from './utils/humanlize-path'
-import { loadModule } from './utils/load-module'
+import pify from 'pify';
+import { loadModule } from './utils/load-module.js';
+import humanlizePath from './utils/humanlize-path.js';
 
-/* eslint import/no-anonymous-default-export: [2, {"allowObject": true}] */
 export default {
   name: 'less',
   test: /\.less$/,
+
   async process({ code }) {
-    const less = await loadModule('less')
-    if (!less) {
+    const lessModule = await loadModule('less');
+    if (!lessModule) {
       throw new Error(
-        'You need to install "less" packages in order to process Less files'
-      )
+        'You need to install "less" package to process Less files'
+      );
     }
 
-    let { css, map, imports } = await pify(less.render.bind(less))(code, {
-      ...this.options,
-      sourceMap: this.sourceMap && {},
-      filename: this.id,
-    })
+    const less = lessModule.default || lessModule;
+    const renderAsync = pify(less.render.bind(less));
 
-    for (const dep of imports) {
-      this.dependencies.add(dep)
-    }
+    try {
+      const {
+        css,
+        map: initialMap,
+        imports,
+      } = await renderAsync(code, {
+        ...this.options,
+        sourceMap: this.sourceMap && {},
+        filename: this.id,
+      });
 
-    if (map) {
-      map = JSON.parse(map)
-      map.sources = map.sources.map((source) => humanlizePath(source))
-    }
+      for (const dep of imports) {
+        this.dependencies.add(dep);
+      }
 
-    return {
-      code: css,
-      map,
+      let map = initialMap;
+      if (map) {
+        map = JSON.parse(map);
+        map.sources = map.sources.map(source => humanlizePath(source));
+      }
+
+      return {
+        code: css,
+        map,
+      };
+    } catch (error) {
+      throw new Error(`Less compilation failed: ${error.message}`);
     }
   },
-}
+};

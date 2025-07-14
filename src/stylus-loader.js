@@ -1,33 +1,41 @@
-import pify from 'pify'
-import { loadModule } from './utils/load-module'
+import pify from 'pify';
+import { loadModule } from './utils/load-module.js';
 
-/* eslint import/no-anonymous-default-export: [2, {"allowObject": true}] */
 export default {
   name: 'stylus',
   test: /\.(styl|stylus)$/,
+
   async process({ code }) {
-    const stylus = await loadModule('stylus')
-    if (!stylus) {
+    const stylusModule = await loadModule('stylus');
+    if (!stylusModule) {
       throw new Error(
-        'You need to install "stylus" packages in order to process Stylus files'
-      )
+        'You need to install "stylus" package to process Stylus files'
+      );
     }
 
+    const stylus = stylusModule.default || stylusModule;
     const style = stylus(code, {
       ...this.options,
       filename: this.id,
       sourcemap: this.sourceMap && {},
-    })
+    });
 
-    const css = await pify(style.render.bind(style))()
-    const deps = style.deps()
-    for (const dep of deps) {
-      this.dependencies.add(dep)
-    }
+    const renderAsync = pify(style.render.bind(style));
 
-    return {
-      code: css,
-      map: style.sourcemap,
+    try {
+      const css = await renderAsync();
+      const deps = style.deps();
+
+      for (const dep of deps) {
+        this.dependencies.add(dep);
+      }
+
+      return {
+        code: css,
+        map: style.sourcemap,
+      };
+    } catch (error) {
+      throw new Error(`Stylus compilation failed: ${error.message}`);
     }
   },
-}
+};

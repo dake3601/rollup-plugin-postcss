@@ -1,65 +1,65 @@
-import path from 'path'
-import postcssLoader from './postcss-loader'
-import sassLoader from './sass-loader'
-import stylusLoader from './stylus-loader'
-import lessLoader from './less-loader'
+import path from 'path';
+import postcssLoader from './postcss-loader.js';
+import sassLoader from './sass-loader.js';
+import stylusLoader from './stylus-loader.js';
+import lessLoader from './less-loader.js';
 
 const matchFile = (filepath, condition) => {
   if (typeof condition === 'function') {
-    return condition(filepath)
+    return condition(filepath);
   }
 
-  return condition && condition.test(filepath)
-}
+  return condition && condition.test(filepath);
+};
 
 export default class Loaders {
   constructor(options = {}) {
     this.use = options.use.map(rule => {
       if (typeof rule === 'string') {
-        return [rule]
+        return [rule];
       }
 
       if (Array.isArray(rule)) {
-        return rule
+        return rule;
       }
 
-      throw new TypeError('The rule in `use` option must be string or Array!')
-    })
-    this.loaders = []
+      throw new TypeError('The rule in `use` option must be string or Array!');
+    });
+    this.loaders = [];
 
-    const extensions = options.extensions || ['.css', '.sss', '.pcss']
+    const extensions = options.extensions || ['.css', '.sss', '.pcss'];
     const customPostcssLoader = {
       ...postcssLoader,
-      test: filepath => extensions.some(ext => path.extname(filepath) === ext)
-    }
-    this.registerLoader(customPostcssLoader)
-    this.registerLoader(sassLoader)
-    this.registerLoader(stylusLoader)
-    this.registerLoader(lessLoader)
+      test: filepath => extensions.some(ext => path.extname(filepath) === ext),
+    };
+    this.registerLoader(customPostcssLoader);
+    this.registerLoader(sassLoader);
+    this.registerLoader(stylusLoader);
+    this.registerLoader(lessLoader);
     if (options.loaders) {
-      options.loaders.forEach(loader => this.registerLoader(loader))
+      options.loaders.forEach(loader => this.registerLoader(loader));
     }
   }
 
   registerLoader(loader) {
-    const existing = this.getLoader(loader.name)
+    const existing = this.getLoader(loader.name);
     if (existing) {
-      this.removeLoader(loader.name)
+      this.removeLoader(loader.name);
     }
 
-    this.loaders.push(loader)
-    return this
+    this.loaders.push(loader);
+    return this;
   }
 
   removeLoader(name) {
-    this.loaders = this.loaders.filter((loader) => loader.name !== name)
-    return this
+    this.loaders = this.loaders.filter(loader => loader.name !== name);
+    return this;
   }
 
   isSupported(filepath) {
-    return this.loaders.some((loader) => {
-      return matchFile(filepath, loader.test)
-    })
+    return this.loaders.some(loader => {
+      return matchFile(filepath, loader.test);
+    });
   }
 
   /**
@@ -78,34 +78,34 @@ export default class Loaders {
       .slice()
       .reverse()
       .map(([name, options]) => {
-        const loader = this.getLoader(name)
+        const loader = this.getLoader(name);
         const loaderContext = {
           options: options || {},
           ...context,
-        }
+        };
 
-        return async (v) => {
+        return v => {
           if (
             loader.alwaysProcess ||
             matchFile(loaderContext.id, loader.test)
           ) {
-            return loader.process.call(loaderContext, v)
+            return loader.process.call(loaderContext, v);
           }
 
           // Otherwise directly return input value
-          return v
-        }
-      })
+          return v;
+        };
+      });
 
-    let result = { code, map }
+    let result = { code, map };
     for (const loaderFn of loaderFunctions) {
-      result = await loaderFn(result)
+      result = await loaderFn(result);
     }
 
-    return result
+    return result;
   }
 
   getLoader(name) {
-    return this.loaders.find((loader) => loader.name === name)
+    return this.loaders.find(loader => loader.name === name);
   }
 }

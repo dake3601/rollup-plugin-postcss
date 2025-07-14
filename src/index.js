@@ -1,8 +1,8 @@
-import path from 'path'
-import { createFilter } from 'rollup-pluginutils'
-import Concat from 'concat-with-sourcemaps'
-import Loaders from './loaders'
-import normalizePath from './utils/normalize-path'
+import path from 'path';
+import { createFilter } from '@rollup/pluginutils';
+import Concat from 'concat-with-sourcemaps';
+import Loaders from './loaders.js';
+import normalizePath from './utils/normalize-path.js';
 
 /**
  * The options that could be `boolean` or `object`
@@ -10,9 +10,9 @@ import normalizePath from './utils/normalize-path'
  * Otherwise fallback to default value
  */
 function inferOption(option, defaultValue) {
-  if (option === false) return false
-  if (option && typeof option === 'object') return option
-  return option ? {} : defaultValue
+  if (option === false) return false;
+  if (option && typeof option === 'object') return option;
+  return option ? {} : defaultValue;
 }
 
 /**
@@ -25,26 +25,26 @@ function inferOption(option, defaultValue) {
  */
 function getRecursiveImportOrder(id, getModuleInfo, seen = new Set()) {
   if (seen.has(id)) {
-    return []
+    return [];
   }
 
-  seen.add(id)
+  seen.add(id);
 
-  const result = [id]
-  getModuleInfo(id).importedIds.forEach((importFile) => {
-    result.push(...getRecursiveImportOrder(importFile, getModuleInfo, seen))
-  })
+  const result = [id];
+  getModuleInfo(id).importedIds.forEach(importFile => {
+    result.push(...getRecursiveImportOrder(importFile, getModuleInfo, seen));
+  });
 
-  return result
+  return result;
 }
 
 /* eslint import/no-anonymous-default-export: [2, {"allowArrowFunction": true}] */
 export default (options = {}) => {
-  const filter = createFilter(options.include, options.exclude)
+  const filter = createFilter(options.include, options.exclude);
   const postcssPlugins = Array.isArray(options.plugins)
     ? options.plugins.filter(Boolean)
-    : options.plugins
-  const { sourceMap } = options
+    : options.plugins;
+  const { sourceMap } = options;
   const postcssLoaderOptions = {
     /** Inject CSS as `<style>` to `<head>` */
     inject:
@@ -73,38 +73,38 @@ export default (options = {}) => {
       stringifier: options.stringifier,
       exec: options.exec,
     },
-  }
-  let use = ['sass', 'stylus', 'less']
+  };
+  let use = ['sass', 'stylus', 'less'];
   if (Array.isArray(options.use)) {
-    use = options.use
+    ({ use } = options);
   } else if (options.use !== null && typeof options.use === 'object') {
     use = [
       ['sass', options.use.sass || {}],
       ['stylus', options.use.stylus || {}],
       ['less', options.use.less || {}],
-    ]
+    ];
   }
 
-  use.unshift(['postcss', postcssLoaderOptions])
+  use.unshift(['postcss', postcssLoaderOptions]);
 
   const loaders = new Loaders({
     use,
     loaders: options.loaders,
     extensions: options.extensions,
-  })
+  });
 
-  const extracted = new Map()
+  const extracted = new Map();
 
   return {
     name: 'postcss',
 
     async transform(code, id) {
       if (!filter(id) || !loaders.isSupported(id)) {
-        return null
+        return null;
       }
 
       if (typeof options.onImport === 'function') {
-        options.onImport(id)
+        options.onImport(id);
       }
 
       const loaderContext = {
@@ -113,7 +113,7 @@ export default (options = {}) => {
         dependencies: new Set(),
         warn: this.warn.bind(this),
         plugin: this,
-      }
+      };
 
       const result = await loaders.process(
         {
@@ -121,129 +121,137 @@ export default (options = {}) => {
           map: undefined,
         },
         loaderContext
-      )
+      );
 
       for (const dep of loaderContext.dependencies) {
-        this.addWatchFile(dep)
+        this.addWatchFile(dep);
       }
 
       if (postcssLoaderOptions.extract) {
-        extracted.set(id, result.extracted)
+        extracted.set(id, result.extracted);
         return {
           code: result.code,
           map: { mappings: '' },
-        }
+        };
       }
 
       return {
         code: result.code,
         map: result.map || { mappings: '' },
-      }
+      };
     },
 
     augmentChunkHash() {
-      if (extracted.size === 0) return
-      // eslint-disable-next-line unicorn/no-reduce
+      if (extracted.size === 0) return;
       const extractedValue = [...extracted].reduce(
         (object, [key, value]) => ({
           ...object,
           [key]: value,
         }),
         {}
-      )
-      return JSON.stringify(extractedValue)
+      );
+      return JSON.stringify(extractedValue);
     },
 
     async generateBundle(options_, bundle) {
-      if (extracted.size === 0 || !(options_.dir || options_.file)) return
+      if (extracted.size === 0 || !(options_.dir || options_.file)) return;
 
-      // eslint-disable-next-line no-warning-comments
       // TODO: support `[hash]`
-      const dir = options_.dir || path.dirname(options_.file)
+      const dir = options_.dir || path.dirname(options_.file);
       const file =
         options_.file ||
         path.join(
           options_.dir,
-          Object.keys(bundle).find((fileName) => bundle[fileName].isEntry)
-        )
+          Object.keys(bundle).find(fileName => bundle[fileName].isEntry)
+        );
       const getExtracted = () => {
-        let fileName = `${path.basename(file, path.extname(file))}.css`
+        let fileName = `${path.basename(file, path.extname(file))}.css`;
         if (typeof postcssLoaderOptions.extract === 'string') {
           fileName = path.isAbsolute(postcssLoaderOptions.extract)
             ? normalizePath(path.relative(dir, postcssLoaderOptions.extract))
-            : normalizePath(postcssLoaderOptions.extract)
+            : normalizePath(postcssLoaderOptions.extract);
         }
 
-        const concat = new Concat(true, fileName, '\n')
-        const entries = [...extracted.values()]
+        const concat = new Concat(true, fileName, '\n');
+        const entries = [...extracted.values()];
         const { modules, facadeModuleId } =
-          bundle[normalizePath(path.relative(dir, file))]
+          bundle[normalizePath(path.relative(dir, file))];
 
         if (modules) {
           const moduleIds = getRecursiveImportOrder(
             facadeModuleId,
             this.getModuleInfo
-          )
+          );
           entries.sort(
             (a, b) => moduleIds.indexOf(a.id) - moduleIds.indexOf(b.id)
-          )
+          );
         }
 
         for (const result of entries) {
-          const relative = normalizePath(path.relative(dir, result.id))
-          const map = result.map || null
+          const relative = normalizePath(path.relative(dir, result.id));
+          const map = result.map || null;
           if (map) {
-            map.file = fileName
+            map.file = fileName;
           }
 
-          concat.add(relative, result.code, map)
+          concat.add(relative, result.code, map);
         }
 
-        let code = concat.content
+        let code = concat.content;
 
         if (sourceMap === 'inline') {
           code += `\n/*# sourceMappingURL=data:application/json;base64,${Buffer.from(
             concat.sourceMap,
             'utf8'
-          ).toString('base64')}*/`
+          ).toString('base64')}*/`;
         } else if (sourceMap === true) {
-          code += `\n/*# sourceMappingURL=${path.basename(fileName)}.map */`
+          code += `\n/*# sourceMappingURL=${path.basename(fileName)}.map */`;
         }
 
         return {
           code,
           map: sourceMap === true && concat.sourceMap,
           codeFileName: fileName,
-          mapFileName: fileName + '.map',
-        }
-      }
+          mapFileName: `${fileName}.map`,
+        };
+      };
 
       if (options.onExtract) {
-        const shouldExtract = await options.onExtract(getExtracted)
+        const shouldExtract = await options.onExtract(getExtracted);
         if (shouldExtract === false) {
-          return
+          return;
         }
       }
 
-      let { code, codeFileName, map, mapFileName } = getExtracted()
+      const {
+        code: initialCode,
+        codeFileName,
+        map: initialMap,
+        mapFileName,
+      } = getExtracted();
+      let code = initialCode;
+      let map = initialMap;
       // Perform cssnano on the extracted file
       if (postcssLoaderOptions.minimize) {
-        const cssOptions = {}
-        cssOptions.from = codeFileName
+        const cssOptions = {};
+        cssOptions.from = codeFileName;
         if (sourceMap === 'inline') {
-          cssOptions.map = { inline: true }
+          cssOptions.map = { inline: true };
         } else if (sourceMap === true && map) {
-          cssOptions.map = { prev: map }
-          cssOptions.to = codeFileName
+          cssOptions.map = { prev: map };
+          cssOptions.to = codeFileName;
         }
 
-        const result = (await import('cssnano'))(
-          postcssLoaderOptions.minimize
-        ).process(code, cssOptions)
-        code = result.css
+        const cssnano = (await import('cssnano')).default;
+
+        const result = await cssnano(postcssLoaderOptions.minimize).process(
+          code,
+          cssOptions
+        );
+        code = result.css;
 
         if (sourceMap === true && result.map && result.map.toString) {
-          map = result.map.toString()
+          map = result.map.toString();
         }
       }
 
@@ -251,14 +259,14 @@ export default (options = {}) => {
         fileName: codeFileName,
         type: 'asset',
         source: code,
-      })
+      });
       if (map) {
         this.emitFile({
           fileName: mapFileName,
           type: 'asset',
           source: map,
-        })
+        });
       }
     },
-  }
-}
+  };
+};

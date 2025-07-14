@@ -1,5 +1,5 @@
 import { Plugin } from 'rollup'
-import { CreateFilter } from 'rollup-pluginutils'
+import { CreateFilter } from '@rollup/pluginutils'
 
 type FunctionType<T = any, U = any> = (...args: readonly T[]) => U;
 
